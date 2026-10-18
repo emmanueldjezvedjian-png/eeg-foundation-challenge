@@ -1,2 +1,13 @@
 .vscode/*
 .DS_Store
+# Environnements et données
+.venv/
+data/
+.Rhistory
+3.10/
+3.11/
+braindecode/
+conseillé/
+ou/
+pour/
+\#/
