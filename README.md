@@ -1,30 +1,39 @@
-# EEG Foundation Challenge 1: predicting reaction time from EEG
+# EEG Foundation Challenge: predicting reaction time from 2 s of EEG
 
-IODAA course project. Goal: predict the reaction time (in seconds) of a subject in the
-Contrast Change Detection task, from 2 s windows of EEG (129 channels, 100 Hz).
-Data: HBN-EEG, mini releases R1 to R5 (99 subjects, 6,613 trials).
+Class project (CentraleSupélec / AgroParisTech, defended 3 Nov 2026).
+Task: predict a subject's reaction time (seconds) from a 2 s EEG window,
+Challenge 1 of the EEG Foundation Challenge (Contrast Change Detection task).
+
+## Data
+- HBN-EEG, mini releases R1-R5 (20 subjects each), 100 Hz, 128 channels (+ 1 flat reference channel, dropped)
+- 6,613 trials from 99 subjects after filtering (RT < 0.5 s removed: 137 trials; one subject with a flat recording removed: 63 windows)
+- Each trial = one window of 128 x 200 samples, starting 0.5 s after the stimulus
+
+## Validation
+- **Subject-wise GroupKFold (5 folds)**: no subject appears in both train and validation, so the model cannot recognise the person. A trial-wise split would leak subject identity (the subject explains ~20% of RT variance).
+- Metric: RMSE in seconds. Noise between folds is about +/-0.015.
+
+## Features
+- Welch band power (delta, theta, alpha, beta, gamma), log10: 128 x 5 = 640 features
+- Mean signal per 200 ms window: 1,280 features
+- Per-subject centring
+
+## Results (RMSE, lower is better)
+| Model | RMSE |
+|---|---|
+| Predict the mean (baseline) | 0.3431 |
+| Ridge (all features, small alpha) | up to 0.3755 (overfits) |
+| Ridge + per-band PCA (k = 10, alpha = 1e4) | 0.3411 (within noise) |
+| XGBoost | ~0.345 |
+| SVR, band power in 4 x 500 ms windows | ~1-2% better than the mean |
+| EEGNeX (single fold) | 0.34-0.38 |
+
+**Takeaway:** no model clearly beats the mean baseline. Inter-subject variability dominates the reaction-time signal in 2 s of EEG, and with 1,920 features for 99 subjects, models memorise subjects. PCA per band fixes the overfitting but does not create signal. The only consistent gain comes from splitting band power in time.
+
+## Next steps
+PLS (supervised PCA), more subjects (R6-R11), event-locked features (ERPs).
 
 ## Files
-
-- `Projeteeg_propre.ipynb`: data preparation. Reads the BDF files, computes the reaction
-  times, cuts the 2 s windows, and saves the arrays in `data/`.
-- `Projeteeg_presentation_en.ipynb`: the analysis (references, Ridge, XGBoost, time slices,
-  subject centring, PCA, SVR on windowed band power, checks).
-- `data/y_5rel.npy`, `data/groupes_5rel.npy`, `data/releases_5rel.npy`: small saved arrays
-  (reaction times, subject of each trial, release of each trial).
-
-## How to run
-
-1. Download the mini releases R1 to R5 (100 Hz, BDF) from the EEG Foundation Challenge
-   website and put them in `data/R*_mini_L100_bdf/`.
-2. Run `Projeteeg_propre.ipynb`. It writes `data/X_fen_5rel.npy` (651 MB, not versioned
-   because it is too large for GitHub) and the three small arrays above.
-3. Run `Projeteeg_presentation_en.ipynb`.
-
-Python packages: numpy, pandas, scipy, scikit-learn, xgboost, matplotlib, mne.
-
-## Main result
-
-No classical model beats the mean baseline (RMSE 0.3431 s). Age alone gives 0.3355 s.
-A weak signal appears when band power is computed in 4 chunks of 500 ms (about 1 to 2 %
-better than the mean); the gain comes from temporal splitting, not from the choice of channels.
+- `Projeteeg_propre.ipynb`: dataset construction
+- `Projeteeg_presentation_en.ipynb`: analysis and results
+- Starter kit files come from the official challenge starter kit: not my work.
